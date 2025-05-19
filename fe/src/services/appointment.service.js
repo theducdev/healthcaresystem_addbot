@@ -20,10 +20,52 @@ const appointmentService = {
 
     createSchedule: async (scheduleData) => {
         try {
-            const response = await axios.post(API_URL + 'schedules/', scheduleData);
+            console.log('Creating schedule with data:', scheduleData);
+            
+            // Get CSRF token
+            const getCookie = (name) => {
+                let cookieValue = null;
+                if (document.cookie && document.cookie !== '') {
+                    const cookies = document.cookie.split(';');
+                    for (let i = 0; i < cookies.length; i++) {
+                        const cookie = cookies[i].trim();
+                        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                            break;
+                        }
+                    }
+                }
+                return cookieValue;
+            };
+            
+            const csrftoken = getCookie('csrftoken');
+            console.log('CSRF Token:', csrftoken);
+            
+            // Note: We don't need to provide the doctor ID because 
+            // the backend should identify the doctor from the authenticated user
+            // However, the serializer might be expecting it, so let's add a placeholder
+            // that will be overridden by the backend
+            const dataToSend = {
+                ...scheduleData,
+                // This will be replaced by the backend with the actual doctor
+                doctor: 1
+            };
+            
+            console.log('Sending data to backend:', dataToSend);
+            
+            const response = await axios.post(API_URL + 'schedules/', dataToSend, {
+                headers: {
+                    'X-CSRFToken': csrftoken,
+                    'Content-Type': 'application/json'
+                },
+                withCredentials: true
+            });
+            
+            console.log('Schedule created successfully:', response.data);
             return response.data;
         } catch (error) {
-            console.error('Error creating schedule', error);
+            console.error('Error creating schedule:', error);
+            console.error('Error response:', error.response?.data);
             throw error;
         }
     },

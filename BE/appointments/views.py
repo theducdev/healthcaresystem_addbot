@@ -8,6 +8,7 @@ from .models import Schedule, Appointment
 from .serializers import ScheduleSerializer, AppointmentSerializer
 from users.models import Doctor
 from users.serializers import DoctorSerializer
+from rest_framework import serializers
 
 # Doctor Schedule Management
 class DoctorScheduleListCreateView(generics.ListCreateAPIView):
@@ -19,8 +20,24 @@ class DoctorScheduleListCreateView(generics.ListCreateAPIView):
         return Schedule.objects.none()
 
     def perform_create(self, serializer):
-        doctor = Doctor.objects.get(user=self.request.user)
-        serializer.save(doctor=doctor)
+        try:
+            print(f"User creating schedule: {self.request.user.username}, is_doctor: {self.request.user.is_doctor}")
+            # Get the doctor associated with the current user
+            doctor = Doctor.objects.get(user=self.request.user)
+            print(f"Found doctor: {doctor.id}, specialization: {doctor.specialization}")
+            # Save the serializer with the doctor
+            serializer.save(doctor=doctor)
+            print(f"Schedule created successfully")
+        except Doctor.DoesNotExist:
+            print(f"Error: No doctor profile found for user {self.request.user.username}")
+            raise serializers.ValidationError("You must have a doctor profile to create schedules.")
+        except Exception as e:
+            print(f"Error creating schedule: {str(e)}")
+            raise
+
+    def create(self, request, *args, **kwargs):
+        print(f"Creating schedule with data: {request.data}")
+        return super().create(request, *args, **kwargs)
 
 class DoctorScheduleDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = ScheduleSerializer

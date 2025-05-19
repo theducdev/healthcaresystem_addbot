@@ -5,11 +5,12 @@ from users.serializers import UserSerializer, DoctorSerializer, PatientSerialize
 
 class ScheduleSerializer(serializers.ModelSerializer):
     doctor_details = serializers.SerializerMethodField()
+    doctor = serializers.PrimaryKeyRelatedField(read_only=True)
 
     class Meta:
         model = Schedule
         fields = ['id', 'doctor', 'date', 'start_time', 'end_time', 'slot_duration', 'is_available', 'doctor_details']
-        read_only_fields = ['doctor_details']
+        read_only_fields = ['doctor', 'doctor_details']
 
     def get_doctor_details(self, obj):
         return {

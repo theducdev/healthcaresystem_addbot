@@ -9,9 +9,11 @@ class UserSerializer(serializers.ModelSerializer):
         fields = ('id', 'username', 'email', 'first_name', 'last_name', 'phone_number', 'is_doctor', 'is_patient')
 
 class DoctorSerializer(serializers.ModelSerializer):
+    user = UserSerializer(read_only=True)
+    
     class Meta:
         model = Doctor
-        fields = ('id', 'specialization')
+        fields = ('id', 'specialization', 'user')
 
 class PatientSerializer(serializers.ModelSerializer):
     class Meta:

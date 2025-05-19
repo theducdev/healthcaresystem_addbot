@@ -31,10 +31,12 @@ class RegisterView(APIView):
 class LoginView(APIView):
     permission_classes = [AllowAny]
     def post(self, request):
+        print(f"Login attempt with data: {request.data}")
         serializer = LoginSerializer(data=request.data)
         if serializer.is_valid():
             user = serializer.validated_data
             login(request, user)
+            print(f"User authenticated: {user.username}, is_doctor: {user.is_doctor}, is_patient: {user.is_patient}")
 
             # Prepare response data
             response_data = UserSerializer(user).data
@@ -42,11 +44,14 @@ class LoginView(APIView):
             # Add profile data if available
             if user.is_doctor and hasattr(user, 'doctor_profile'):
                 response_data['doctor_profile'] = DoctorSerializer(user.doctor_profile).data
+                print(f"Added doctor profile data: {response_data['doctor_profile']}")
 
             if user.is_patient and hasattr(user, 'patient_profile'):
                 response_data['patient_profile'] = PatientSerializer(user.patient_profile).data
+                print(f"Added patient profile data: {response_data['patient_profile']}")
 
             return Response(response_data)
+        print(f"Login validation errors: {serializer.errors}")
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class UserInfoView(APIView):

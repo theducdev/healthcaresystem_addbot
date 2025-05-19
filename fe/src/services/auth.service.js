@@ -15,9 +15,30 @@ function getCSRFToken() {
     return cookieValue;
 }
 
+// Set up axios interceptors for all requests
 axios.interceptors.request.use(config => {
-    config.headers['X-CSRFToken'] = getCSRFToken();
+    const token = getCSRFToken();
+    if (token) {
+        config.headers['X-CSRFToken'] = token;
+    }
+    console.log('Request config:', {
+        url: config.url,
+        method: config.method,
+        headers: config.headers,
+        withCredentials: config.withCredentials
+    });
     return config;
+}, error => {
+    return Promise.reject(error);
+});
+
+// Response interceptor to log responses
+axios.interceptors.response.use(response => {
+    console.log('Response:', response.status);
+    return response;
+}, error => {
+    console.error('Response error:', error.response?.status, error.response?.data);
+    return Promise.reject(error);
 });
 
 // Rest of your auth service code...

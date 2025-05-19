@@ -30,7 +30,18 @@ const CreateSchedule = () => {
         setSuccess('');
 
         try {
-            await appointmentService.createSchedule(scheduleData);
+            // Format the data correctly for the API
+            const formattedData = {
+                ...scheduleData,
+                // Ensure time is in 24-hour format with seconds
+                start_time: scheduleData.start_time + ':00',
+                end_time: scheduleData.end_time + ':00',
+                // Convert slot_duration to number if it's not already
+                slot_duration: parseInt(scheduleData.slot_duration, 10)
+            };
+            
+            console.log('Submitting data:', formattedData);
+            await appointmentService.createSchedule(formattedData);
             setSuccess('Schedule created successfully');
             setScheduleData({
                 date: '',
@@ -39,6 +50,7 @@ const CreateSchedule = () => {
                 slot_duration: 30,
             });
         } catch (err) {
+            console.error('Submission error:', err);
             setError('Failed to create schedule. Please check your inputs.');
         } finally {
             setLoading(false);
