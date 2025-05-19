@@ -1,0 +1,61 @@
+# docker-compose.yml
+version: '3'
+
+services:
+  db:
+    image: postgres:13
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    environment:
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_DB=healthcare_db
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s  # Give PostgreSQL some time to start before checking
+
+  # Backend
+  backend:
+    build:
+      context: ./BE
+      dockerfile: Dockerfile
+    command: >
+      bash -c "
+        echo 'Waiting for PostgreSQL to start...' &&
+        sleep 10 &&
+        python manage.py migrate --noinput &&
+        echo 'from users.models import User; User.objects.create_superuser(\"admin\", \"admin@example.com\", \"adminpassword\") if not User.objects.filter(username=\"admin\").exists() else None;' | python manage.py shell &&
+        python manage.py runserver 0.0.0.0:8000"
+    volumes:
+      - ./BE:/app
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - DATABASE_URL=postgres://postgres:postgres@db:5432/healthcare_db
+      - DEBUG=True
+
+  # Frontend
+  frontend:
+    build:
+      context: ./fe
+      dockerfile: Dockerfile
+    volumes:
+      - ./fe:/app
+      - /app/node_modules
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    environment:
+      - REACT_APP_API_URL=http://localhost:8000/api
+
+volumes:
+  postgres_data:
