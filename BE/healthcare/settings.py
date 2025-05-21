@@ -2,7 +2,7 @@
 
 import os
 from pathlib import Path
-from django.middleware.csrf import CsrfViewMiddleware
+from datetime import timedelta
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -13,7 +13,7 @@ SECRET_KEY = 'django-insecure-your-secret-key-here'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
 
 # Application definition
 INSTALLED_APPS = [
@@ -23,22 +23,18 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    # Third-party apps
-    'rest_framework',
     'corsheaders',
-    # Your apps
+    'rest_framework',
     'users',
     'appointments',
-    # 'healthcare',
 ]
 
 MIDDLEWARE = [
-    'corsheaders.middleware.CorsMiddleware',
+    'corsheaders.middleware.CorsMiddleware',  # CORS middleware must be at the top
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
-    # Comment out or remove the CSRF middleware for now
-    # 'django.middleware.csrf.CsrfViewMiddleware',
+    'django.middleware.csrf.CsrfViewMiddleware',  # Re-enable CSRF middleware
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
@@ -46,6 +42,7 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'healthcare.urls'
 
+# Templates configuration
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -64,15 +61,14 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'healthcare.wsgi.application'
 
-# Database
-# https://docs.djangoproject.com/en/4.2/ref/settings/#databases
+# Database configuration
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'healthcare_db',
         'USER': 'postgres',
         'PASSWORD': 'postgres',
-        'HOST': 'db',  # Changed from 'localhost' to 'db' to match Docker service name
+        'HOST': 'db',
         'PORT': '5432',
     }
 }
@@ -93,28 +89,16 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-# Internationalization
-LANGUAGE_CODE = 'en-us'
-TIME_ZONE = 'UTC'
-USE_I18N = True
-USE_TZ = True
-
-# Static files (CSS, JavaScript, Images)
-STATIC_URL = 'static/'
-
-# Default primary key field type
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
-# Add these CORS settings
-CORS_ALLOW_ALL_ORIGINS = True  # For development only
+# CORS settings
+CORS_ALLOW_ALL_ORIGINS = True  # Cho phép tất cả origins trong môi trường development
 CORS_ALLOW_CREDENTIALS = True
-CORS_ALLOW_METHODS = [
-    'DELETE',
-    'GET',
-    'OPTIONS',
-    'PATCH',
-    'POST',
-    'PUT',
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]
+CORS_EXPOSE_HEADERS = [
+    'Content-Type', 
+    'X-CSRFToken',
 ]
 CORS_ALLOW_HEADERS = [
     'accept',
@@ -128,21 +112,45 @@ CORS_ALLOW_HEADERS = [
     'x-requested-with',
 ]
 
-# BE/healthcare/settings.py
-# Update REST_FRAMEWORK settings
+# Session settings
+SESSION_ENGINE = 'django.contrib.sessions.backends.db'
+SESSION_COOKIE_NAME = 'sessionid'
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SECURE = False
+SESSION_COOKIE_SAMESITE = None  # Đổi thành None để cho phép cross-site requests
+SESSION_COOKIE_DOMAIN = None
+SESSION_COOKIE_AGE = 86400
+
+# CSRF settings
+CSRF_USE_SESSIONS = False
+CSRF_COOKIE_NAME = 'csrftoken'
+CSRF_COOKIE_HTTPONLY = False
+CSRF_COOKIE_SECURE = False
+CSRF_COOKIE_SAMESITE = None  # Đổi thành None để cho phép cross-site requests
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]
+
+# REST Framework settings
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.SessionAuthentication',
-        'rest_framework.authentication.BasicAuthentication',  # Add this
     ],
     'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.IsAuthenticated',
+        'rest_framework.permissions.AllowAny',  # Đổi thành AllowAny để test
     ],
 }
 
-# Add this to the settings file
-CSRF_TRUSTED_ORIGINS = ['http://localhost:3000']
-
-
-# Add this to your settings.py if it's not already there
+# Custom user model
 AUTH_USER_MODEL = 'users.User'
+
+# Internationalization
+LANGUAGE_CODE = 'en-us'
+TIME_ZONE = 'UTC'
+USE_I18N = True
+USE_TZ = True
+
+# Static files (CSS, JavaScript, Images)
+STATIC_URL = 'static/'
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

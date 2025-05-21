@@ -3,45 +3,48 @@ import axios from 'axios';
 
 const API_URL = 'http://localhost:8000/api/users/';
 
-// Add cookies support for session authentication
-axios.defaults.withCredentials = true;
-
-// Get CSRF token from cookies
-function getCSRFToken() {
-    const cookieValue = document.cookie
-        .split('; ')
-        .find(row => row.startsWith('csrftoken='))
-        ?.split('=')[1];
-    return cookieValue;
-}
-
-// Set up axios interceptors for all requests
-axios.interceptors.request.use(config => {
-    const token = getCSRFToken();
-    if (token) {
-        config.headers['X-CSRFToken'] = token;
+// Cấu hình mặc định cho axios
+const axiosInstance = axios.create({
+    baseURL: API_URL,
+    withCredentials: true, // Quan trọng cho việc gửi cookies
+    headers: {
+        'Content-Type': 'application/json',
     }
-    console.log('Request config:', {
-        url: config.url,
-        method: config.method,
-        headers: config.headers,
-        withCredentials: config.withCredentials
-    });
-    return config;
-}, error => {
-    return Promise.reject(error);
 });
 
-// Response interceptor to log responses
-axios.interceptors.response.use(response => {
-    console.log('Response:', response.status);
-    return response;
-}, error => {
-    console.error('Response error:', error.response?.status, error.response?.data);
-    return Promise.reject(error);
-});
+// Interceptor để xử lý request
+axiosInstance.interceptors.request.use(
+    (config) => {
+        // Lấy CSRF token từ cookie
+        const csrfToken = document.cookie
+            .split('; ')
+            .find(row => row.startsWith('csrftoken='))
+            ?.split('=')[1];
 
-// Rest of your auth service code...
+        if (csrfToken) {
+            config.headers['X-CSRFToken'] = csrfToken;
+        }
+        return config;
+    },
+    (error) => {
+        return Promise.reject(error);
+    }
+);
+
+// Interceptor để xử lý response
+axiosInstance.interceptors.response.use(
+    (response) => {
+        return response;
+    },
+    async (error) => {
+        // Nếu token hết hạn hoặc không hợp lệ
+        if (error.response?.status === 401) {
+            // Xóa thông tin người dùng trong localStorage
+            localStorage.removeItem('user');
+        }
+        return Promise.reject(error);
+    }
+);
 
 // Default accounts for fallback when backend is unavailable
 const DEFAULT_ACCOUNTS = [
@@ -78,67 +81,62 @@ const DEFAULT_ACCOUNTS = [
 const authService = {
     login: async (credentials) => {
         try {
-            // Try to connect to the backend
-            const response = await axios.post(API_URL + 'login/', credentials);
+            const response = await axiosInstance.post('login/', credentials);
+            if (response.data) {
+                localStorage.setItem('user', JSON.stringify(response.data));
+            }
             return response.data;
         } catch (error) {
-            console.log('Backend connection failed, using fallback mode');
-
-            // Fallback to default accounts if backend is unavailable
-            const user = DEFAULT_ACCOUNTS.find(
-                account => account.username === credentials.username && account.password === credentials.password
-            );
-
-            if (user) {
-                // Create a copy without the password
-                const { password, ...userWithoutPassword } = user;
-                return userWithoutPassword;
-            }
-
-            throw new Error('Invalid username or password');
+            console.error('Login error:', error.response?.data);
+            throw error;
         }
     },
 
     register: async (userData) => {
         try {
-            // Try to connect to the backend
-            const response = await axios.post(API_URL + 'register/', userData);
+            const response = await axiosInstance.post('register/', userData);
             return response.data;
         } catch (error) {
-            console.log('Backend connection failed, using fallback mode');
-
-            // In fallback mode, check if username already exists
-            if (DEFAULT_ACCOUNTS.some(account => account.username === userData.username)) {
-                throw new Error('Username already exists');
-            }
-
-            // Simulate successful registration
-            return { success: true };
+            console.error('Registration error:', error.response?.data);
+            throw error;
         }
     },
 
-    // Add this method to your authService object
     logout: async () => {
         try {
-            // Try to connect to the backend
-            await axios.post(API_URL + 'logout/');
-            // Clear any local state or storage if needed
+            await axiosInstance.post('logout/');
+            localStorage.removeItem('user');
             return true;
         } catch (error) {
-            console.log('Backend connection failed, using fallback mode');
-            // In fallback mode, just return success
-            return true;
+            console.error('Logout error:', error.response?.data);
+            throw error;
         }
     },
 
     getCurrentUser: async () => {
         try {
-            // Try to get current user from backend
-            const response = await axios.get(API_URL + 'me/');
+            const response = await axiosInstance.get('me/');
             return response.data;
         } catch (error) {
+            console.error('Get current user error:', error.response?.data);
             return null;
         }
+    },
+
+    updateProfile: async (data) => {
+        try {
+            const response = await axiosInstance.put('update-profile/', data);
+            return response.data;
+        } catch (error) {
+            console.error('Update profile error:', error.response?.data);
+            throw error;
+        }
+    },
+
+    // Kiểm tra xem người dùng đã đăng nhập hay chưa
+    isAuthenticated: () => {
+        const user = localStorage.getItem('user');
+        return !!user;
     }
 };
 

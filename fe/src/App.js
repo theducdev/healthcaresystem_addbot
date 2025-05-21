@@ -8,6 +8,7 @@ import './App.css';
 import Login from './components/Auth/Login';
 import Register from './components/Auth/Register';
 import Dashboard from './components/Dashboard/Dashboard';
+import Profile from './components/Profile/Profile';
 
 // Doctor components
 import CreateSchedule from './components/Doctor/CreateSchedule';
@@ -73,6 +74,14 @@ function App() {
             <Route
                 path="/dashboard"
                 element={isLoggedIn ? <Dashboard user={currentUser} onLogout={handleLogout} /> : <Navigate to="/" />}
+            />
+
+            {/* Profile Route */}
+            <Route
+                path="/profile"
+                element={isLoggedIn ? 
+                    <Dashboard user={currentUser} onLogout={handleLogout} content={<Profile user={currentUser} />} /> : 
+                    <Navigate to="/" />}
             />
 
             {/* Doctor Routes */}

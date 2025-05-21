@@ -6,6 +6,23 @@ const API_URL = 'http://localhost:8000/api/appointments/';
 // Maintain consistent configuration with other services
 axios.defaults.withCredentials = true;
 
+// Utility function to get CSRF token
+const getCsrfToken = () => {
+    const name = 'csrftoken';
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+};
+
 const appointmentService = {
     // Doctor Schedule Management
     getDoctorSchedules: async () => {
@@ -23,22 +40,7 @@ const appointmentService = {
             console.log('Creating schedule with data:', scheduleData);
             
             // Get CSRF token
-            const getCookie = (name) => {
-                let cookieValue = null;
-                if (document.cookie && document.cookie !== '') {
-                    const cookies = document.cookie.split(';');
-                    for (let i = 0; i < cookies.length; i++) {
-                        const cookie = cookies[i].trim();
-                        if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                            break;
-                        }
-                    }
-                }
-                return cookieValue;
-            };
-            
-            const csrftoken = getCookie('csrftoken');
+            const csrftoken = getCsrfToken();
             console.log('CSRF Token:', csrftoken);
             
             // Note: We don't need to provide the doctor ID because 
@@ -82,11 +84,33 @@ const appointmentService = {
 
     deleteSchedule: async (scheduleId) => {
         try {
-            await axios.delete(`${API_URL}schedules/${scheduleId}/`);
+            const csrfToken = getCsrfToken();
+            console.log('Deleting schedule:', scheduleId);
+            
+            await axios.delete(`${API_URL}schedules/${scheduleId}/`, {
+                headers: {
+                    'X-CSRFToken': csrfToken,
+                    'Content-Type': 'application/json'
+                },
+                withCredentials: true
+            });
+            
+            console.log('Schedule deleted successfully');
             return true;
         } catch (error) {
-            console.error('Error deleting schedule', error);
-            throw error;
+            console.error('Error deleting schedule:', error);
+            console.error('Error response:', error.response?.data);
+            
+            // Xử lý các trường hợp lỗi cụ thể
+            if (error.response?.status === 403) {
+                throw new Error('You are not authorized to delete this schedule');
+            } else if (error.response?.status === 404) {
+                throw new Error('Schedule not found');
+            } else if (error.response?.data?.detail) {
+                throw new Error(error.response.data.detail);
+            } else {
+                throw new Error('Failed to delete schedule. Please try again.');
+            }
         }
     },
 
@@ -113,10 +137,22 @@ const appointmentService = {
 
     bookAppointment: async (bookingData) => {
         try {
-            const response = await axios.post(`${API_URL}book/`, bookingData);
+            const csrfToken = getCsrfToken();
+            console.log('Booking appointment with data:', bookingData);
+            
+            const response = await axios.post(`${API_URL}book/`, bookingData, {
+                headers: {
+                    'X-CSRFToken': csrfToken,
+                    'Content-Type': 'application/json'
+                },
+                withCredentials: true
+            });
+            
+            console.log('Appointment booked successfully:', response.data);
             return response.data;
         } catch (error) {
-            console.error('Error booking appointment', error);
+            console.error('Error booking appointment:', error);
+            console.error('Error response:', error.response?.data);
             throw error;
         }
     },
@@ -144,11 +180,33 @@ const appointmentService = {
 
     cancelAppointment: async (appointmentId) => {
         try {
-            const response = await axios.patch(`${API_URL}appointments/${appointmentId}/cancel/`);
+            const csrfToken = getCsrfToken();
+            console.log('Cancelling appointment:', appointmentId);
+            
+            const response = await axios.patch(`${API_URL}appointments/${appointmentId}/cancel/`, {}, {
+                headers: {
+                    'X-CSRFToken': csrfToken,
+                    'Content-Type': 'application/json'
+                },
+                withCredentials: true
+            });
+            
+            console.log('Appointment cancelled successfully:', response.data);
             return response.data;
         } catch (error) {
-            console.error('Error canceling appointment', error);
-            throw error;
+            console.error('Error cancelling appointment:', error);
+            console.error('Error response:', error.response?.data);
+            
+            // Xử lý các trường hợp lỗi cụ thể
+            if (error.response?.status === 403) {
+                throw new Error('You are not authorized to cancel this appointment');
+            } else if (error.response?.status === 404) {
+                throw new Error('Appointment not found');
+            } else if (error.response?.data?.detail) {
+                throw new Error(error.response.data.detail);
+            } else {
+                throw new Error('Failed to cancel appointment. Please try again.');
+            }
         }
     }
 };

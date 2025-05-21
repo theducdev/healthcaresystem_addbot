@@ -4,6 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Card, Form, Button, Row, Col, Alert, Spinner, ListGroup } from 'react-bootstrap';
 import { format, parse, isAfter } from 'date-fns';
 import appointmentService from '../../services/appointment.service';
+import authService from '../../services/auth.service';
 
 const BookAppointment = () => {
     const { doctorId } = useParams();
@@ -15,11 +16,30 @@ const BookAppointment = () => {
     const [selectedTime, setSelectedTime] = useState('');
     const [reason, setReason] = useState('');
     const [availableSlots, setAvailableSlots] = useState([]);
+    const [user, setUser] = useState(null);
 
     const [loading, setLoading] = useState(true);
     const [bookingLoading, setBookingLoading] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
+
+    useEffect(() => {
+        const fetchUser = async () => {
+            try {
+                const userData = await authService.getCurrentUser();
+                if (userData && userData.is_patient) {
+                    setUser(userData);
+                } else {
+                    setError('You must be logged in as a patient to book appointments');
+                    navigate('/login');
+                }
+            } catch (err) {
+                setError('Failed to load user information');
+                navigate('/login');
+            }
+        };
+        fetchUser();
+    }, [navigate]);
 
     useEffect(() => {
         fetchDoctorAndSchedules();
@@ -74,7 +94,7 @@ const BookAppointment = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        if (!selectedSchedule || !selectedTime || !reason) {
+        if (!selectedSchedule || !selectedTime || !reason || !user?.patient_profile?.id) {
             setError('Please fill out all required fields');
             return;
         }
@@ -86,7 +106,8 @@ const BookAppointment = () => {
             await appointmentService.bookAppointment({
                 schedule_id: selectedSchedule.id,
                 time: selectedTime,
-                reason: reason
+                reason: reason,
+                patient_id: user.patient_profile.id
             });
 
             setSuccess('Appointment booked successfully!');
@@ -101,7 +122,8 @@ const BookAppointment = () => {
                 navigate('/my-appointments');
             }, 2000);
         } catch (err) {
-            setError('Failed to book appointment. Please try again.');
+            console.error('Booking error:', err.response?.data);
+            setError(err.response?.data?.detail || 'Failed to book appointment. Please try again.');
         } finally {
             setBookingLoading(false);
         }
