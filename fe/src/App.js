@@ -9,6 +9,7 @@ import Login from './components/Auth/Login';
 import Register from './components/Auth/Register';
 import Dashboard from './components/Dashboard/Dashboard';
 import Profile from './components/Profile/Profile';
+import ChatbotComponent from './components/Chatbot/Chatbot';
 
 // Doctor components
 import CreateSchedule from './components/Doctor/CreateSchedule';
@@ -124,6 +125,7 @@ function App() {
                     <Navigate to="/" />}
             />
           </Routes>
+          {isLoggedIn && <ChatbotComponent />}
         </div>
       </Router>
   );

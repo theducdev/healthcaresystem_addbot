@@ -56,6 +56,27 @@ services:
       - backend
     environment:
       - REACT_APP_API_URL=http://localhost:8000/api
+      - REACT_APP_LLAMA_URL=http://localhost:8001
+
+  # LLama Service
+  llama:
+    build:
+      context: ./be/llama_service
+      dockerfile: Dockerfile
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./be/llama_service:/app
+      - llama_models:/root/.cache/huggingface  # Lưu trữ mô hình đã tải
+    environment:
+      - PYTHONUNBUFFERED=1
+    deploy:
+      resources:
+        limits:
+          memory: 8G  # Giới hạn bộ nhớ để tránh OOM
+        reservations:
+          memory: 4G  # Đảm bảo có đủ bộ nhớ để chạy
 
 volumes:
   postgres_data:
+  llama_models:  # Volume mới để lưu trữ mô hình
